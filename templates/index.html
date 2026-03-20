@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audio Transcriber</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .card {
+      background: #1e293b;
+      border-radius: 1rem;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 560px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+      color: #f1f5f9;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: #94a3b8;
+      margin-bottom: 2rem;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed #475569;
+      border-radius: 0.75rem;
+      padding: 2.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #6366f1;
+      background: rgba(99, 102, 241, 0.05);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .drop-label {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+    }
+
+    .drop-hint {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 0.35rem;
+    }
+
+    .file-chosen {
+      font-size: 0.85rem;
+      color: #818cf8;
+      margin-top: 0.5rem;
+      font-weight: 500;
+    }
+
+    /* Options grid */
+    .options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .field.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    select, input[type="text"] {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+      padding: 0.5rem 0.75rem;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: #6366f1;
+    }
+
+    /* Button */
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    button:hover:not(:disabled) { background: #4f46e5; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Progress area */
+    #status-area {
+      margin-top: 1.5rem;
+      display: none;
+    }
+
+    .progress-bar-wrap {
+      background: #0f172a;
+      border-radius: 9999px;
+      height: 6px;
+      overflow: hidden;
+      margin-bottom: 0.75rem;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: #6366f1;
+      border-radius: 9999px;
+      width: 0%;
+      transition: width 0.4s;
+    }
+
+    .progress-bar.indeterminate {
+      width: 40%;
+      animation: slide 1.2s ease-in-out infinite;
+    }
+
+    @keyframes slide {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(350%); }
+    }
+
+    #status-msg {
+      font-size: 0.875rem;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    #status-msg.error { color: #f87171; }
+    #status-msg.done  { color: #4ade80; }
+
+    .download-btn {
+      margin-top: 1rem;
+      background: #059669;
+      display: none;
+    }
+
+    .download-btn:hover { background: #047857; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎙 Audio Transcriber</h1>
+    <p class="subtitle">Powered by OpenAI Whisper — fully offline</p>
+
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".mpr,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma,.opus,.mp4,.mkv" />
+      <div class="drop-icon">📁</div>
+      <div class="drop-label">Drop your audio file here or <strong>click to browse</strong></div>
+      <div class="drop-hint">Supported: MPR, MP3, WAV, M4A, OGG, FLAC, AAC, and more</div>
+      <div class="file-chosen" id="file-name"></div>
+    </div>
+
+    <div class="options">
+      <div class="field">
+        <label for="model">Whisper Model</label>
+        <select id="model">
+          <option value="tiny">Tiny (fastest)</option>
+          <option value="base" selected>Base (balanced)</option>
+          <option value="small">Small (better)</option>
+          <option value="medium">Medium (recommended)</option>
+          <option value="large-v3">Large v3 (best)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="task">Task</label>
+        <select id="task">
+          <option value="transcribe" selected>Transcribe (keep language)</option>
+          <option value="translate">Translate to English</option>
+        </select>
+      </div>
+
+      <div class="field full">
+        <label for="language">Language (optional)</label>
+        <input type="text" id="language" placeholder="Auto-detect  —  or type: en, pt, es, fr, …" />
+      </div>
+    </div>
+
+    <button id="transcribe-btn" disabled>Transcribe</button>
+
+    <div id="status-area">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div id="status-msg"></div>
+      <button class="download-btn" id="download-btn">⬇ Download Transcript (.txt)</button>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const dropZone = document.getElementById('drop-zone');
+    const fileName = document.getElementById('file-name');
+    const transcribeBtn = document.getElementById('transcribe-btn');
+    const statusArea = document.getElementById('status-area');
+    const progressBar = document.getElementById('progress-bar');
+    const statusMsg = document.getElementById('status-msg');
+    const downloadBtn = document.getElementById('download-btn');
+
+    let currentJobId = null;
+    let pollInterval = null;
+
+    // Drag-and-drop
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) setFile(fileInput.files[0]);
+    });
+
+    function setFile(file) {
+      fileName.textContent = file.name;
+      transcribeBtn.disabled = false;
+    }
+
+    transcribeBtn.addEventListener('click', startTranscription);
+
+    async function startTranscription() {
+      const file = fileInput.files[0] || (dropZone._droppedFile);
+      if (!file && !fileInput.files[0]) {
+        alert('Please select a file first.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      formData.append('model', document.getElementById('model').value);
+      formData.append('task', document.getElementById('task').value);
+      formData.append('language', document.getElementById('language').value.trim());
+
+      transcribeBtn.disabled = true;
+      downloadBtn.style.display = 'none';
+      statusArea.style.display = 'block';
+      setStatus('Uploading file…', 'pending');
+      progressBar.className = 'progress-bar indeterminate';
+
+      try {
+        const res = await fetch('/transcribe', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.error) { setStatus('Error: ' + data.error, 'error'); transcribeBtn.disabled = false; return; }
+
+        currentJobId = data.job_id;
+        setStatus('Transcribing… this may take a few minutes.', 'pending');
+        pollInterval = setInterval(pollStatus, 2000);
+      } catch (err) {
+        setStatus('Upload failed: ' + err.message, 'error');
+        transcribeBtn.disabled = false;
+      }
+    }
+
+    async function pollStatus() {
+      try {
+        const res = await fetch('/status/' + currentJobId);
+        const data = await res.json();
+
+        if (data.status === 'done') {
+          clearInterval(pollInterval);
+          progressBar.className = 'progress-bar';
+          progressBar.style.width = '100%';
+          setStatus(data.message, 'done');
+          downloadBtn.style.display = 'block';
+          downloadBtn.onclick = () => window.location.href = '/download/' + currentJobId;
+          transcribeBtn.disabled = false;
+        } else if (data.status === 'error') {
+          clearInterval(pollInterval);
+          progressBar.className = 'progress-bar';
+          setStatus(data.message, 'error');
+          transcribeBtn.disabled = false;
+        } else {
+          setStatus(data.message, 'pending');
+        }
+      } catch (err) {
+        // network hiccup, keep polling
+      }
+    }
+
+    function setStatus(msg, type) {
+      statusMsg.textContent = msg;
+      statusMsg.className = type === 'error' ? 'error' : type === 'done' ? 'done' : '';
+    }
+  </script>
+</body>
+</html>

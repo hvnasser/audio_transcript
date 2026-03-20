@@ -2,3 +2,4 @@ openai-whisper
 torch
 torchaudio
 ffmpeg-python
+flask
