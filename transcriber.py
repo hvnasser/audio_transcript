@@ -4,10 +4,29 @@ Detects language automatically and handles multiple languages in the same audio.
 """
 
 import argparse
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 import whisper
+
+
+def _check_ffmpeg() -> None:
+    if shutil.which("ffmpeg") is None:
+        print(
+            "ERROR: ffmpeg not found.\n"
+            "Whisper requires ffmpeg to decode audio files.\n\n"
+            "Install it with one of:\n"
+            "  Windows : winget install ffmpeg\n"
+            "            choco install ffmpeg\n"
+            "            scoop install ffmpeg\n"
+            "  macOS   : brew install ffmpeg\n"
+            "  Linux   : sudo apt install ffmpeg\n\n"
+            "After installing, restart your terminal and try again.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 WHISPER_MODELS = ["tiny", "base", "small", "medium", "large", "large-v2", "large-v3"]
@@ -38,6 +57,8 @@ def transcribe(
           - segments: List of timed segments with per-segment metadata.
           - language: Detected (or forced) language code.
     """
+    _check_ffmpeg()
+
     audio_path = Path(audio_path)
     if not audio_path.exists():
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
