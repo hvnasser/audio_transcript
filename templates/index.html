@@ -13,7 +13,7 @@
       color: #e2e8f0;
       min-height: 100vh;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       padding: 2rem;
     }
@@ -23,8 +23,9 @@
       border-radius: 1rem;
       padding: 2.5rem;
       width: 100%;
-      max-width: 560px;
+      max-width: 600px;
       box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+      margin-top: 2rem;
     }
 
     h1 {
@@ -37,8 +38,38 @@
     .subtitle {
       font-size: 0.875rem;
       color: #94a3b8;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.75rem;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 0;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      width: auto;
+      transition: color 0.2s, border-color 0.2s;
+      margin-bottom: -1px;
+    }
+
+    .tab-btn:hover { color: #cbd5e1; }
+    .tab-btn.active { color: #818cf8; border-bottom-color: #6366f1; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
 
     /* Drop zone */
     .drop-zone {
@@ -66,28 +97,10 @@
       height: 100%;
     }
 
-    .drop-icon {
-      font-size: 2.5rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .drop-label {
-      font-size: 0.95rem;
-      color: #cbd5e1;
-    }
-
-    .drop-hint {
-      font-size: 0.8rem;
-      color: #64748b;
-      margin-top: 0.35rem;
-    }
-
-    .file-chosen {
-      font-size: 0.85rem;
-      color: #818cf8;
-      margin-top: 0.5rem;
-      font-weight: 500;
-    }
+    .drop-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .drop-label { font-size: 0.95rem; color: #cbd5e1; }
+    .drop-hint { font-size: 0.8rem; color: #64748b; margin-top: 0.35rem; }
+    .file-chosen { font-size: 0.85rem; color: #818cf8; margin-top: 0.5rem; font-weight: 500; }
 
     /* Options grid */
     .options {
@@ -97,12 +110,7 @@
       margin-bottom: 1.5rem;
     }
 
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
+    .field { display: flex; flex-direction: column; gap: 0.4rem; }
     .field.full { grid-column: 1 / -1; }
 
     label {
@@ -125,11 +133,9 @@
       transition: border-color 0.2s;
     }
 
-    select:focus, input[type="text"]:focus {
-      border-color: #6366f1;
-    }
+    select:focus, input[type="text"]:focus { border-color: #6366f1; }
 
-    /* Button */
+    /* Buttons */
     button {
       width: 100%;
       padding: 0.75rem;
@@ -146,7 +152,7 @@
     button:hover:not(:disabled) { background: #4f46e5; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* Progress area */
+    /* Single file status */
     #status-area {
       margin-top: 1.5rem;
       display: none;
@@ -178,22 +184,77 @@
       100% { transform: translateX(350%); }
     }
 
-    #status-msg {
-      font-size: 0.875rem;
-      color: #94a3b8;
-      text-align: center;
-    }
-
+    #status-msg { font-size: 0.875rem; color: #94a3b8; text-align: center; }
     #status-msg.error { color: #f87171; }
     #status-msg.done  { color: #4ade80; }
 
-    .download-btn {
-      margin-top: 1rem;
-      background: #059669;
-      display: none;
+    .download-btn { margin-top: 1rem; background: #059669; display: none; }
+    .download-btn:hover { background: #047857; }
+
+    /* URL tab */
+    .url-section { margin-bottom: 1.5rem; }
+
+    #batch-status-area { margin-top: 1.5rem; display: none; }
+
+    #batch-summary {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      margin-bottom: 1rem;
+      text-align: center;
     }
 
-    .download-btn:hover { background: #047857; }
+    .file-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+    .file-item {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.6rem;
+      padding: 0.6rem 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .file-item-name {
+      flex: 1;
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      word-break: break-all;
+    }
+
+    .file-item-msg {
+      font-size: 0.78rem;
+      color: #64748b;
+      white-space: nowrap;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-pending    { background: #1e3a5f; color: #60a5fa; }
+    .badge-downloading{ background: #1e3a5f; color: #93c5fd; }
+    .badge-transcribing { background: #312e81; color: #a5b4fc; }
+    .badge-done       { background: #064e3b; color: #4ade80; }
+    .badge-error      { background: #450a0a; color: #f87171; }
+
+    .dl-btn-small {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.3rem 0.6rem;
+      background: #059669;
+      border-radius: 0.4rem;
+      white-space: nowrap;
+      width: auto;
+    }
+
+    .dl-btn-small:hover { background: #047857; }
   </style>
 </head>
 <body>
@@ -201,65 +262,130 @@
     <h1>🎙 Audio Transcriber</h1>
     <p class="subtitle">Powered by OpenAI Whisper — fully offline</p>
 
-    <div class="drop-zone" id="drop-zone">
-      <input type="file" id="file-input" accept=".mpr,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma,.opus,.mp4,.mkv" />
-      <div class="drop-icon">📁</div>
-      <div class="drop-label">Drop your audio file here or <strong>click to browse</strong></div>
-      <div class="drop-hint">Supported: MPR, MP3, WAV, M4A, OGG, FLAC, AAC, and more</div>
-      <div class="file-chosen" id="file-name"></div>
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('upload')">Upload File</button>
+      <button class="tab-btn" onclick="switchTab('url')">From URL</button>
     </div>
 
-    <div class="options">
-      <div class="field">
-        <label for="model">Whisper Model</label>
-        <select id="model">
-          <option value="tiny">Tiny (fastest)</option>
-          <option value="base" selected>Base (balanced)</option>
-          <option value="small">Small (better)</option>
-          <option value="medium">Medium (recommended)</option>
-          <option value="large-v3">Large v3 (best)</option>
-        </select>
+    <!-- ── Tab: Upload File ── -->
+    <div class="tab-panel active" id="tab-upload">
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept=".mpr,.mp3,.wav,.m4a,.ogg,.flac,.aac,.wma,.opus,.mp4,.mkv" />
+        <div class="drop-icon">📁</div>
+        <div class="drop-label">Drop your audio file here or <strong>click to browse</strong></div>
+        <div class="drop-hint">Supported: MPR, MP3, WAV, M4A, OGG, FLAC, AAC, and more</div>
+        <div class="file-chosen" id="file-name"></div>
       </div>
 
-      <div class="field">
-        <label for="task">Task</label>
-        <select id="task">
-          <option value="transcribe" selected>Transcribe (keep language)</option>
-          <option value="translate">Translate to English</option>
-        </select>
+      <div class="options">
+        <div class="field">
+          <label for="model">Whisper Model</label>
+          <select id="model">
+            <option value="tiny">Tiny (fastest)</option>
+            <option value="base" selected>Base (balanced)</option>
+            <option value="small">Small (better)</option>
+            <option value="medium">Medium (recommended)</option>
+            <option value="large-v3">Large v3 (best)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="task">Task</label>
+          <select id="task">
+            <option value="transcribe" selected>Transcribe (keep language)</option>
+            <option value="translate">Translate to English</option>
+          </select>
+        </div>
+
+        <div class="field full">
+          <label for="language">Language (optional)</label>
+          <input type="text" id="language" placeholder="Auto-detect  —  or type: en, pt, es, fr, …" />
+        </div>
       </div>
 
-      <div class="field full">
-        <label for="language">Language (optional)</label>
-        <input type="text" id="language" placeholder="Auto-detect  —  or type: en, pt, es, fr, …" />
+      <button id="transcribe-btn" disabled>Transcribe</button>
+
+      <div id="status-area">
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div id="status-msg"></div>
+        <button class="download-btn" id="download-btn">⬇ Download Transcript (.txt)</button>
       </div>
     </div>
 
-    <button id="transcribe-btn" disabled>Transcribe</button>
+    <!-- ── Tab: From URL ── -->
+    <div class="tab-panel" id="tab-url">
+      <div class="url-section">
+        <div class="options">
+          <div class="field full">
+            <label for="page-url">Page URL</label>
+            <input type="text" id="page-url" placeholder="https://example.com/podcasts" />
+          </div>
 
-    <div id="status-area">
-      <div class="progress-bar-wrap">
-        <div class="progress-bar" id="progress-bar"></div>
+          <div class="field full">
+            <label for="download-folder">Download Folder Name</label>
+            <input type="text" id="download-folder" placeholder="my-podcast  (saved inside downloads/)" />
+          </div>
+
+          <div class="field">
+            <label for="url-model">Whisper Model</label>
+            <select id="url-model">
+              <option value="tiny">Tiny (fastest)</option>
+              <option value="base" selected>Base (balanced)</option>
+              <option value="small">Small (better)</option>
+              <option value="medium">Medium (recommended)</option>
+              <option value="large-v3">Large v3 (best)</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="url-task">Task</label>
+            <select id="url-task">
+              <option value="transcribe" selected>Transcribe (keep language)</option>
+              <option value="translate">Translate to English</option>
+            </select>
+          </div>
+
+          <div class="field full">
+            <label for="url-language">Language (optional)</label>
+            <input type="text" id="url-language" placeholder="Auto-detect  —  or type: en, pt, es, fr, …" />
+          </div>
+        </div>
+
+        <button id="crawl-btn">Find &amp; Transcribe Audio Files</button>
       </div>
-      <div id="status-msg"></div>
-      <button class="download-btn" id="download-btn">⬇ Download Transcript (.txt)</button>
+
+      <div id="batch-status-area">
+        <div id="batch-summary"></div>
+        <div class="file-list" id="file-list"></div>
+      </div>
     </div>
   </div>
 
   <script>
-    const fileInput = document.getElementById('file-input');
-    const dropZone = document.getElementById('drop-zone');
-    const fileName = document.getElementById('file-name');
+    // ── Tab switching ──
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // ── Upload tab ──
+    const fileInput    = document.getElementById('file-input');
+    const dropZone     = document.getElementById('drop-zone');
+    const fileName     = document.getElementById('file-name');
     const transcribeBtn = document.getElementById('transcribe-btn');
-    const statusArea = document.getElementById('status-area');
-    const progressBar = document.getElementById('progress-bar');
-    const statusMsg = document.getElementById('status-msg');
-    const downloadBtn = document.getElementById('download-btn');
+    const statusArea   = document.getElementById('status-area');
+    const progressBar  = document.getElementById('progress-bar');
+    const statusMsg    = document.getElementById('status-msg');
+    const downloadBtn  = document.getElementById('download-btn');
 
     let currentJobId = null;
     let pollInterval = null;
 
-    // Drag-and-drop
     dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
     dropZone.addEventListener('drop', e => {
@@ -280,11 +406,7 @@
     transcribeBtn.addEventListener('click', startTranscription);
 
     async function startTranscription() {
-      const file = fileInput.files[0] || (dropZone._droppedFile);
-      if (!file && !fileInput.files[0]) {
-        alert('Please select a file first.');
-        return;
-      }
+      if (!fileInput.files[0]) { alert('Please select a file first.'); return; }
 
       const formData = new FormData();
       formData.append('file', fileInput.files[0]);
@@ -333,14 +455,115 @@
         } else {
           setStatus(data.message, 'pending');
         }
-      } catch (err) {
-        // network hiccup, keep polling
-      }
+      } catch (_) {}
     }
 
     function setStatus(msg, type) {
       statusMsg.textContent = msg;
       statusMsg.className = type === 'error' ? 'error' : type === 'done' ? 'done' : '';
+    }
+
+    // ── URL / Batch tab ──
+    const crawlBtn         = document.getElementById('crawl-btn');
+    const batchStatusArea  = document.getElementById('batch-status-area');
+    const batchSummary     = document.getElementById('batch-summary');
+    const fileList         = document.getElementById('file-list');
+
+    let currentBatchId = null;
+    let batchPollInterval = null;
+
+    crawlBtn.addEventListener('click', startCrawl);
+
+    async function startCrawl() {
+      const url    = document.getElementById('page-url').value.trim();
+      const folder = document.getElementById('download-folder').value.trim();
+      const model  = document.getElementById('url-model').value;
+      const task   = document.getElementById('url-task').value;
+      const lang   = document.getElementById('url-language').value.trim();
+
+      if (!url) { alert('Please enter a page URL.'); return; }
+
+      crawlBtn.disabled = true;
+      batchStatusArea.style.display = 'block';
+      batchSummary.textContent = 'Scanning page for audio files…';
+      fileList.innerHTML = '';
+
+      try {
+        const res = await fetch('/crawl', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, folder, model, task, language: lang }),
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          batchSummary.textContent = 'Error: ' + data.error;
+          crawlBtn.disabled = false;
+          return;
+        }
+
+        currentBatchId = data.batch_id;
+        batchSummary.textContent = `Found ${data.total} audio file(s). Processing sequentially…`;
+        batchPollInterval = setInterval(pollBatch, 2500);
+      } catch (err) {
+        batchSummary.textContent = 'Request failed: ' + err.message;
+        crawlBtn.disabled = false;
+      }
+    }
+
+    async function pollBatch() {
+      try {
+        const res = await fetch('/batch-status/' + currentBatchId);
+        const data = await res.json();
+        if (data.error) return;
+
+        const done  = data.files.filter(f => f.status === 'done').length;
+        const error = data.files.filter(f => f.status === 'error').length;
+
+        if (data.status === 'done') {
+          clearInterval(batchPollInterval);
+          crawlBtn.disabled = false;
+          batchSummary.textContent = `Completed: ${done} transcribed, ${error} error(s) out of ${data.total} file(s).`;
+        } else {
+          batchSummary.textContent = `Processing… ${done}/${data.total} done.`;
+        }
+
+        renderFileList(data.files);
+      } catch (_) {}
+    }
+
+    function renderFileList(files) {
+      fileList.innerHTML = '';
+      files.forEach((f, idx) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+
+        const badge = document.createElement('span');
+        badge.className = 'badge badge-' + f.status;
+        badge.textContent = f.status;
+
+        const name = document.createElement('div');
+        name.className = 'file-item-name';
+        name.textContent = f.filename;
+
+        const msg = document.createElement('div');
+        msg.className = 'file-item-msg';
+        msg.textContent = f.message;
+
+        item.appendChild(badge);
+        item.appendChild(name);
+        item.appendChild(msg);
+
+        if (f.status === 'done' && f.has_output) {
+          const dlBtn = document.createElement('button');
+          dlBtn.className = 'dl-btn-small';
+          dlBtn.textContent = '⬇ .txt';
+          dlBtn.onclick = () => { window.location.href = `/batch-download/${currentBatchId}/${idx}`; };
+          item.appendChild(dlBtn);
+        }
+
+        fileList.appendChild(item);
+      });
     }
   </script>
 </body>
