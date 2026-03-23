@@ -244,6 +244,17 @@
     .badge-done       { background: #064e3b; color: #4ade80; }
     .badge-error      { background: #450a0a; color: #f87171; }
 
+    .pause-btn {
+      margin-bottom: 1rem;
+      background: #b45309;
+      font-size: 0.9rem;
+      padding: 0.6rem;
+    }
+
+    .pause-btn:hover { background: #92400e; }
+    .pause-btn.paused { background: #1d4ed8; }
+    .pause-btn.paused:hover { background: #1e40af; }
+
     .dl-btn-small {
       font-size: 0.75rem;
       font-weight: 600;
@@ -359,6 +370,7 @@
 
       <div id="batch-status-area">
         <div id="batch-summary"></div>
+        <button id="pause-btn" class="pause-btn" style="display:none" onclick="togglePause()">⏸ Pause</button>
         <div class="file-list" id="file-list"></div>
       </div>
     </div>
@@ -465,12 +477,14 @@
 
     // ── URL / Batch tab ──
     const crawlBtn         = document.getElementById('crawl-btn');
+    const pauseBtn         = document.getElementById('pause-btn');
     const batchStatusArea  = document.getElementById('batch-status-area');
     const batchSummary     = document.getElementById('batch-summary');
     const fileList         = document.getElementById('file-list');
 
     let currentBatchId = null;
     let batchPollInterval = null;
+    let isBatchPaused = false;
 
     crawlBtn.addEventListener('click', startCrawl);
 
@@ -484,6 +498,8 @@
       if (!url) { alert('Please enter a page URL.'); return; }
 
       crawlBtn.disabled = true;
+      isBatchPaused = false;
+      pauseBtn.style.display = 'none';
       batchStatusArea.style.display = 'block';
       batchSummary.textContent = 'Scanning page for audio files…';
       fileList.innerHTML = '';
@@ -504,11 +520,31 @@
 
         currentBatchId = data.batch_id;
         batchSummary.textContent = `Found ${data.total} audio file(s). Processing sequentially…`;
+        setPauseBtn(false);
+        pauseBtn.style.display = 'block';
         batchPollInterval = setInterval(pollBatch, 2500);
       } catch (err) {
         batchSummary.textContent = 'Request failed: ' + err.message;
         crawlBtn.disabled = false;
       }
+    }
+
+    async function togglePause() {
+      if (!currentBatchId) return;
+      const endpoint = isBatchPaused
+        ? `/batch-resume/${currentBatchId}`
+        : `/batch-pause/${currentBatchId}`;
+      try {
+        await fetch(endpoint, { method: 'POST' });
+        isBatchPaused = !isBatchPaused;
+        setPauseBtn(isBatchPaused);
+      } catch (_) {}
+    }
+
+    function setPauseBtn(paused) {
+      isBatchPaused = paused;
+      pauseBtn.textContent = paused ? '▶ Resume' : '⏸ Pause';
+      pauseBtn.classList.toggle('paused', paused);
     }
 
     async function pollBatch() {
@@ -523,8 +559,13 @@
         if (data.status === 'done') {
           clearInterval(batchPollInterval);
           crawlBtn.disabled = false;
+          pauseBtn.style.display = 'none';
           batchSummary.textContent = `Completed: ${done} transcribed, ${error} error(s) out of ${data.total} file(s).`;
+        } else if (data.paused) {
+          setPauseBtn(true);
+          batchSummary.textContent = `Paused — ${done}/${data.total} done.`;
         } else {
+          setPauseBtn(false);
           batchSummary.textContent = `Processing… ${done}/${data.total} done.`;
         }
 

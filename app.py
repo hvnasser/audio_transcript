@@ -7,6 +7,7 @@ Then open http://localhost:5000 in your browser.
 import os
 import re
 import threading
+import time
 import uuid
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -32,9 +33,12 @@ AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".wma", ".o
 jobs: dict[str, dict] = {}
 jobs_lock = threading.Lock()
 
-# batch_id -> {"status": "running|done", "total": N, "files": [...]}
+# batch_id -> {"status": "running|paused|done", "total": N, "files": [...]}
 batches: dict[str, dict] = {}
 batches_lock = threading.Lock()
+
+# batch_id -> threading.Event  (set = running, clear = paused)
+batch_resume_events: dict[str, threading.Event] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -128,26 +132,42 @@ def download(job_id: str):
 # ---------------------------------------------------------------------------
 
 def _scrape_audio_links(url: str) -> list[str]:
-    """Return all audio file URLs found on the given page."""
+    """Return unique audio file URLs found on the given page.
+
+    Deduplicates by normalized filename (lowercased, no query string) so that
+    pages with both a play button and a download button for the same file only
+    return one entry.  The download <a href> is preferred over an <audio src>
+    when both exist.
+    """
     resp = http_requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    found: set[str] = set()
+    # Collect candidates: (normalized_filename, full_url, priority)
+    # priority 0 = <a href> (download link), 1 = <audio>/<source> (stream)
+    candidates: list[tuple[str, str, int]] = []
 
     for tag in soup.find_all("a", href=True):
         href = tag["href"]
         full = urljoin(url, href)
+        fname = Path(urlparse(full).path).name.lower()
         if Path(urlparse(full).path).suffix.lower() in AUDIO_EXTENSIONS:
-            found.add(full)
+            candidates.append((fname, full, 0))
 
     for tag in soup.find_all(["audio", "source"], src=True):
         src = tag["src"]
         full = urljoin(url, src)
+        fname = Path(urlparse(full).path).name.lower()
         if Path(urlparse(full).path).suffix.lower() in AUDIO_EXTENSIONS:
-            found.add(full)
+            candidates.append((fname, full, 1))
 
-    return list(found)
+    # Keep only the highest-priority (lowest priority number) URL per filename
+    best: dict[str, tuple[str, int]] = {}
+    for fname, full_url, priority in candidates:
+        if fname not in best or priority < best[fname][1]:
+            best[fname] = (full_url, priority)
+
+    return [url for url, _ in best.values()]
 
 
 def _download_file(url: str, dest_dir: Path) -> Path:
@@ -172,8 +192,17 @@ def _download_file(url: str, dest_dir: Path) -> Path:
 
 
 def _run_batch(batch_id: str, audio_urls: list[str], download_dir: Path, model: str, language: str | None, task: str) -> None:
+    resume_event = batch_resume_events[batch_id]
+
     for i, url in enumerate(audio_urls):
+        # Wait here if the user has paused the batch
+        while not resume_event.is_set():
+            with batches_lock:
+                batches[batch_id]["status"] = "paused"
+            time.sleep(0.5)
+
         with batches_lock:
+            batches[batch_id]["status"] = "running"
             file_entry = batches[batch_id]["files"][i]
             file_entry["status"] = "downloading"
             file_entry["message"] = "Downloading…"
@@ -181,7 +210,15 @@ def _run_batch(batch_id: str, audio_urls: list[str], download_dir: Path, model: 
         try:
             local_path = _download_file(url, download_dir)
 
+            # Check pause again before starting transcription (which is slow)
+            while not resume_event.is_set():
+                with batches_lock:
+                    batches[batch_id]["status"] = "paused"
+                    file_entry["message"] = "Paused…"
+                time.sleep(0.5)
+
             with batches_lock:
+                batches[batch_id]["status"] = "running"
                 file_entry["status"] = "transcribing"
                 file_entry["message"] = "Transcribing…"
 
@@ -247,6 +284,10 @@ def start_crawl():
         for idx, u in enumerate(audio_urls)
     ]
 
+    resume_event = threading.Event()
+    resume_event.set()  # start in running state
+    batch_resume_events[batch_id] = resume_event
+
     with batches_lock:
         batches[batch_id] = {"status": "running", "total": len(files), "files": files}
 
@@ -258,6 +299,30 @@ def start_crawl():
     thread.start()
 
     return jsonify({"batch_id": batch_id, "total": len(files)})
+
+
+@app.route("/batch-pause/<batch_id>", methods=["POST"])
+def batch_pause(batch_id: str):
+    event = batch_resume_events.get(batch_id)
+    if event is None:
+        return jsonify({"error": "Unknown batch"}), 404
+    event.clear()  # signal the thread to pause
+    with batches_lock:
+        if batches[batch_id]["status"] == "running":
+            batches[batch_id]["status"] = "paused"
+    return jsonify({"status": "paused"})
+
+
+@app.route("/batch-resume/<batch_id>", methods=["POST"])
+def batch_resume(batch_id: str):
+    event = batch_resume_events.get(batch_id)
+    if event is None:
+        return jsonify({"error": "Unknown batch"}), 404
+    event.set()  # signal the thread to continue
+    with batches_lock:
+        if batches[batch_id]["status"] == "paused":
+            batches[batch_id]["status"] = "running"
+    return jsonify({"status": "running"})
 
 
 @app.route("/batch-status/<batch_id>")
@@ -276,7 +341,7 @@ def batch_status(batch_id: str):
         }
         for f in batch["files"]
     ]
-    return jsonify({"status": batch["status"], "total": batch["total"], "files": files})
+    return jsonify({"status": batch["status"], "total": batch["total"], "files": files, "paused": batch["status"] == "paused"})
 
 
 @app.route("/batch-download/<batch_id>/<int:file_index>")
