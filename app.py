@@ -231,8 +231,15 @@ def _run_batch(batch_id: str, audio_urls: list[str], download_dir: Path, model: 
             full_text = result["text"].strip()
             detected_lang = result.get("language", "unknown")
 
-            out_path = OUTPUT_DIR / f"{local_path.stem}_{batch_id[:8]}_{i}.txt"
+            # Save transcript alongside the downloaded audio folder
+            out_path = download_dir / f"{local_path.stem}.txt"
             out_path.write_text(full_text, encoding="utf-8")
+
+            # Remove the audio file now that the transcript is saved
+            try:
+                local_path.unlink(missing_ok=True)
+            except Exception:
+                pass
 
             with batches_lock:
                 file_entry["status"] = "done"
